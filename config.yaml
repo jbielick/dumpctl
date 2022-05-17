@@ -1,0 +1,52 @@
+apiVersion: v1
+databases:
+  - name: promote_development
+    include:
+      # anx_countries:
+      # archetype_videos:
+      # automated_campaign_configs:
+      # automated_campaign_configs_partner_feeds:
+      # automated_campaign_configs_partners:
+      # configurable_text_fields:
+      # dynamic_data:
+      # elf_configs:
+      # flipper_features:
+      # flipper_gates:
+      # mail_types:
+      # partner_automation_settings:
+      # partner_feed_transformer_bindings:
+      # partner_feed_transformers:
+      partner_feeds:
+        adapter_config: encrypt
+      # partner_images:
+      # partner_video_templates:
+      # partners:
+      # places:
+      # postal_codes:
+      # render_payload_elements:
+      # vertical_landing_templates:
+      # vertical_landing_text_fields:
+      # verticals:
+      # creative_template_sets:
+      # creative_templates:
+      # creative_template_documents:
+      # creative_template_assets:
+      # creative_template_assets_templates:
+      # creative_template_documents_templates:
+      # creative_input_default_generators:
+      # partners_creative_template_sets:
+      # creative_input_controls:
+      # creative_input_validators:
+      # creative_input_controls_default_generators:
+      # creative_input_default_generators_validators:
+      # rules_sets:
+      # rules_sets_rules:
+      # rules_sets_rules_arguments:
+      # interchangeable_layouts:
+      # partner_interchangeable_layouts:
+      # subdomains:
+      # groups:
+      # permissions:
+      # groups_permissions:
+      # facebook_pages:
+      # intervals:
