@@ -1,4 +1,4 @@
-package v1
+package main
 
 import (
 	"fmt"
@@ -8,40 +8,33 @@ import (
 	"strings"
 )
 
-// Unlick mysqldump, Dumper is designed for parsing and syning data easily.
 type Dumper struct {
-	ExecutionPath    string
+	Binpath          string
 	Addr             string
 	User             string
 	Password         string
 	Tables           []string
 	Database         string
-	Where            string
+	Where            []string
 	Charset          string
-	IgnoreTables     []string
 	ExtraOptions     []string
 	ErrOut           io.Writer
 	maxAllowedPacket int
 }
 
-func NewDumper(executionPath string, addr string, user string, password string) (*Dumper, error) {
-	if len(executionPath) == 0 {
-		return nil, nil
-	}
-
-	path, err := exec.LookPath(executionPath)
+func NewDumper(options *Options) (*Dumper, error) {
+	path, err := exec.LookPath(options.Binpath)
 	if err != nil {
 		return nil, err
 	}
 
 	d := new(Dumper)
-	d.ExecutionPath = path
-	d.Addr = addr
-	d.User = user
-	d.Password = password
+	d.Binpath = path
+	d.Addr = fmt.Sprintf("%s:%s", options.Host, options.Port)
+	d.User = options.User
+	d.Password = options.Password
 	d.Tables = make([]string, 0, 16)
-	d.Charset = "utf8mb4"
-	d.IgnoreTables = []string{}
+	d.Charset = ""
 	d.ExtraOptions = []string{}
 
 	d.ErrOut = os.Stderr
@@ -53,7 +46,7 @@ func (d *Dumper) SetCharset(charset string) {
 	d.Charset = charset
 }
 
-func (d *Dumper) SetWhere(where string) {
+func (d *Dumper) SetWhere(where []string) {
 	d.Where = where
 }
 
@@ -78,21 +71,15 @@ func (d *Dumper) AddTables(db string, tables ...string) {
 	d.Tables = append(d.Tables, tables...)
 }
 
-func (d *Dumper) AddIgnoreTables(db string, tables ...string) {
-	d.IgnoreTables = append(d.IgnoreTables, tables...)
-}
-
 func (d *Dumper) Reset() {
 	d.Tables = d.Tables[0:0]
 	d.Database = ""
-	d.IgnoreTables = []string{}
-	d.Where = ""
+	d.Where = []string{}
 }
 
 func (d *Dumper) Dump(w io.Writer) error {
 	args := make([]string, 0, 16)
 
-	// Common args
 	if strings.Contains(d.Addr, "/") {
 		args = append(args, fmt.Sprintf("--socket=%s", d.Addr))
 	} else {
@@ -113,29 +100,21 @@ func (d *Dumper) Dump(w io.Writer) error {
 	}
 
 	args = append(args, "--single-transaction")
-	// args = append(args, "--complete-insert")
 	args = append(args, "--compact")
 	args = append(args, "--skip-lock-tables")
-	args = append(args, "--skip-add-drop-table")
-	args = append(args, "--no-create-info")
 	args = append(args, "--skip-opt")
 	args = append(args, "--quick")
-	// args = append(args, "--skip-extended-insert")
+	args = append(args, "--skip-extended-insert")
 	args = append(args, "--tz-utc")
 	args = append(args, "--hex-blob")
-
-	for db, tables := range d.IgnoreTables {
-		for _, table := range tables {
-			args = append(args, fmt.Sprintf("--ignore-table=%s.%s", db, table))
-		}
-	}
+	args = append(args, "--add-drop-table")
 
 	if len(d.Charset) != 0 {
 		args = append(args, fmt.Sprintf("--default-character-set=%s", d.Charset))
 	}
 
 	if len(d.Where) != 0 {
-		args = append(args, fmt.Sprintf("--where=%s", d.Where))
+		args = append(args, fmt.Sprintf("--where=%s", strings.Join(d.Where, " AND ")))
 	}
 
 	if len(d.ExtraOptions) != 0 {
@@ -145,37 +124,19 @@ func (d *Dumper) Dump(w io.Writer) error {
 	args = append(args, d.Database)
 	args = append(args, d.Tables...)
 
-	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.Database)))
+	// _, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.Database)))
+	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", "promote_test")))
 	if err != nil {
 		return fmt.Errorf(`could not write USE command: %w`, err)
 	}
 
 	args[passwordArgIndex] = "--password=******"
-	// log.Infof("exec mysqldump with %v", args)
+	fmt.Printf("exec mysqldump with %v\n", args)
 	args[passwordArgIndex] = passwordArg
-	cmd := exec.Command(d.ExecutionPath, args...)
+	cmd := exec.Command(d.Binpath, args...)
 
 	cmd.Stderr = d.ErrOut
 	cmd.Stdout = w
 
 	return cmd.Run()
 }
-
-// DumpAndParse: Dump MySQL and parse immediately
-// func (d *Dumper) DumpAndParse(h dump.ParseHandler) error {
-// 	r, w := io.Pipe()
-
-// 	done := make(chan error, 1)
-// 	go func() {
-// 		err := dump.Parse(r, h, false)
-// 		_ = r.CloseWithError(err)
-// 		done <- err
-// 	}()
-
-// 	err := d.Dump(w)
-// 	_ = w.CloseWithError(err)
-
-// 	err = <-done
-
-// 	return errors.Trace(err)
-// }
