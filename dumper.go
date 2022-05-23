@@ -16,6 +16,7 @@ type Dumper struct {
 	Tables           []string
 	Database         string
 	Where            []string
+	Limit            int
 	Charset          string
 	ExtraOptions     []string
 	ErrOut           io.Writer
@@ -48,6 +49,10 @@ func (d *Dumper) SetCharset(charset string) {
 
 func (d *Dumper) SetWhere(where []string) {
 	d.Where = where
+}
+
+func (d *Dumper) SetLimit(limit int) {
+	d.Limit = limit
 }
 
 func (d *Dumper) SetExtraOptions(options []string) {
@@ -113,9 +118,17 @@ func (d *Dumper) Dump(w io.Writer) error {
 		args = append(args, fmt.Sprintf("--default-character-set=%s", d.Charset))
 	}
 
+	var where string
 	if len(d.Where) != 0 {
-		args = append(args, fmt.Sprintf("--where=%s", strings.Join(d.Where, " AND ")))
+		where = strings.Join(d.Where, " AND ")
+	} else {
+		where = "1"
 	}
+
+	if d.Limit > 0 {
+		where += fmt.Sprintf(" limit %d", d.Limit)
+	}
+	args = append(args, fmt.Sprintf("--where=%s", where))
 
 	if len(d.ExtraOptions) != 0 {
 		args = append(args, d.ExtraOptions...)

@@ -29,6 +29,7 @@ type Table struct {
 	Name              string             `hcl:"name,label"`
 	Extra             hcl.Body           `hcl:",remain"`
 	Where             []string           `hcl:"where,optional"`
+	Limit             int                `hcl:"limit,optional"`
 	UnconfiguredRules []UnconfiguredRule `hcl:"rule,block"`
 	Rules             []ConfiguredRule
 	Columns           map[string]Column

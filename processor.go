@@ -36,9 +36,11 @@ func (p *Processor) DumpDatabase(s chan error, ctx context.Context, database *Da
 	}
 
 	for _, table := range database.Tables {
+		dumper.Reset()
 		dumper.AddTables(database.Name, table.Name)
 		dumper.SetExtraOptions(p.Config.Options.ExtraArgs)
 		dumper.SetWhere(table.Where)
+		dumper.SetLimit(table.Limit)
 
 		visitor := &RuleVisitor{Table: &table}
 
