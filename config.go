@@ -120,10 +120,10 @@ func (c *Config) ConfigureRules() (diagnostics hcl.Diagnostics) {
 				tableCtx[column.Name] = cty.StringVal(column.Name)
 			}
 			for _, rule := range table.UnconfiguredRules {
+				vars := make(map[string]cty.Value)
+				vars[table.Name] = cty.MapVal(tableCtx)
 				ctx := &hcl.EvalContext{
-					Variables: map[string]cty.Value{
-						"table": cty.MapVal(tableCtx),
-					},
+					Variables: vars,
 				}
 				configuredRule, moreDiags := NewConfiguredRule(&database.Tables[tableIndex], rule, ctx)
 				diagnostics = append(diagnostics, moreDiags...)
