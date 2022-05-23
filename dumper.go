@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -144,7 +145,7 @@ func (d *Dumper) Dump(w io.Writer) error {
 	}
 
 	args[passwordArgIndex] = "--password=******"
-	fmt.Printf("exec mysqldump with %v\n", args)
+	log.Printf("exec mysqldump with %v\n", args)
 	args[passwordArgIndex] = passwordArg
 	cmd := exec.Command(d.Binpath, args...)
 
