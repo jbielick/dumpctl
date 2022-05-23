@@ -27,6 +27,8 @@ func NewConfiguredRule(table *Table, unconfiguredRule UnconfiguredRule, ctx *hcl
 	switch unconfiguredRule.Type {
 	case "mask":
 		return NewMaskRule(unconfiguredRule, ctx)
+	case "redact":
+		return NewRedactRule(unconfiguredRule, ctx)
 	default:
 		attrRange := unconfiguredRule.SpecBody.MissingItemRange()
 		return nil, hcl.Diagnostics{
