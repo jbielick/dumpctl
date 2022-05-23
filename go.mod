@@ -1,4 +1,4 @@
-module github.com/adwerx/trimdump
+module github.com/adwerx/dumpctl
 
 go 1.17
 
