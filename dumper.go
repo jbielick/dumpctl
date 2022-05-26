@@ -132,7 +132,7 @@ func (d *Dumper) Dump(w io.Writer) error {
 	}
 
 	if len(where) != 0 || len(limit) != 0 {
-		args = append(args, fmt.Sprintf("--where=%s", where))
+		args = append(args, fmt.Sprintf("--where=%s%s", where, limit))
 	}
 
 	if len(d.ExtraOptions) != 0 {
