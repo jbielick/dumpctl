@@ -3,36 +3,26 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/pingcap/parser/ast"
-	"github.com/zclconf/go-cty/cty"
 )
 
 type Config struct {
-	Databases []Database `hcl:"database,block"`
-	Extra     hcl.Body   `hcl:",remain"`
+	Databases map[string]*Database
 	Options   *Options
+	File      *hcl.File
 }
 
-type Database struct {
-	Name      string  `hcl:"name,label"`
-	AllTables *bool   `hcl:"all_tables"`
-	Tables    []Table `hcl:"table,block"`
-}
-
-type Table struct {
-	Name              string             `hcl:"name,label"`
-	Extra             hcl.Body           `hcl:",remain"`
-	Where             []string           `hcl:"where,optional"`
-	Limit             int                `hcl:"limit,optional"`
-	UnconfiguredRules []UnconfiguredRule `hcl:"rule,block"`
-	Rules             []ConfiguredRule
-	Columns           map[string]Column
+var configSchema = &hcl.BodySchema{
+	Blocks: []hcl.BlockHeaderSchema{
+		{
+			Type:       "database",
+			LabelNames: []string{"name"},
+		},
+	},
 }
 
 type Column struct {
@@ -40,6 +30,11 @@ type Column struct {
 	Position  int64
 	Type      string
 	MaxLength sql.NullInt64
+	Table     *Table
+}
+
+func (c *Column) String() string {
+	return fmt.Sprintf(c.Table.Name, c.Name)
 }
 
 type Row struct {
@@ -49,91 +44,51 @@ type Row struct {
 
 func NewConfig(opts *Options) (config *Config, err error) {
 	parser := hclparse.NewParser()
-	config = &Config{Options: opts}
 	f, diags := parser.ParseHCLFile(opts.ConfigFile)
-	moreDiags := gohcl.DecodeBody(f.Body, nil, config)
+
+	config = &Config{
+		Databases: make(map[string]*Database),
+		Options:   opts,
+		File:      f,
+	}
+
+	moreDiags := config.Read()
 	diags = append(diags, moreDiags...)
-	moreDiags = config.ConfigureRules()
-	diags = append(diags, moreDiags...)
+
 	if diags.HasErrors() {
 		var sb strings.Builder
 		wr := hcl.NewDiagnosticTextWriter(&sb, parser.Files(), 78, true)
 		wr.WriteDiagnostics(diags)
-		err = fmt.Errorf("%s", sb.String())
+		err = fmt.Errorf("Some errors were encountered reading the config: \n%s", sb.String())
 	}
 	return
 }
 
-func (c *Config) GetTableSchema(
-	database *Database,
-	table *Table,
-) (columns map[string]Column, diagnostics hcl.Diagnostics) {
-	columns = make(map[string]Column)
-	db, err := sql.Open(
-		"mysql",
-		fmt.Sprintf(
-			"%s:%s@tcp(%s:%s)/information_schema",
-			c.Options.User,
-			c.Options.Password,
-			c.Options.Host,
-			c.Options.Port,
-		),
-	)
-	defer db.Close()
-	if err != nil {
-		log.Fatal(err.Error())
+func (c *Config) Read() (diags hcl.Diagnostics) {
+	configContent, diags := c.File.Body.Content(configSchema)
+	if diags.HasErrors() {
+		return
 	}
-	rows, err := db.Query(`
-SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION, CHARACTER_MAXIMUM_LENGTH
-from INFORMATION_SCHEMA.COLUMNS
-where TABLE_SCHEMA = ? and TABLE_NAME = ?
-order by ORDINAL_POSITION asc`, database.Name, table.Name)
-	if err != nil {
-		diagnostics.Append(&hcl.Diagnostic{Summary: err.Error()})
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var column Column
-		if err := rows.Scan(&column.Name, &column.Type, &column.Position, &column.MaxLength); err != nil {
-			diagnostics.Append(&hcl.Diagnostic{Summary: err.Error()})
+	for _, dbBlock := range configContent.Blocks {
+		database, moreDiags := c.AddDatabase(dbBlock.Labels[0], dbBlock)
+		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
+			continue
 		}
-		columns[column.Name] = column
-	}
-	if err = rows.Err(); err != nil {
-		diagnostics.Append(&hcl.Diagnostic{Summary: err.Error()})
+		moreDiags = database.ReadSchema()
+		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
+			continue
+		}
+		moreDiags = database.ReadRules()
+		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
+			continue
+		}
 	}
 	return
 }
 
-func (c *Config) ConfigureRules() (diagnostics hcl.Diagnostics) {
-	for _, database := range c.Databases {
-		for tableIndex, table := range database.Tables {
-			columns, moreDiags := c.GetTableSchema(&database, &table)
-			diagnostics = append(diagnostics, moreDiags...)
-			if moreDiags.HasErrors() {
-				continue
-			}
-			database.Tables[tableIndex].Columns = columns
-			tableCtx := make(map[string]cty.Value)
-			for _, column := range columns {
-				tableCtx[column.Name] = cty.StringVal(column.Name)
-			}
-			for _, rule := range table.UnconfiguredRules {
-				vars := make(map[string]cty.Value)
-				vars[table.Name] = cty.MapVal(tableCtx)
-				ctx := &hcl.EvalContext{
-					Variables: vars,
-				}
-				configuredRule, moreDiags := NewConfiguredRule(&database.Tables[tableIndex], rule, ctx)
-				diagnostics = append(diagnostics, moreDiags...)
-				if moreDiags.HasErrors() {
-					continue
-				}
-
-				database.Tables[tableIndex].Rules = append(database.Tables[tableIndex].Rules, configuredRule)
-			}
-		}
-	}
+// make some of this NewDatabase
+func (c *Config) AddDatabase(name string, block *hcl.Block) (db *Database, diags hcl.Diagnostics) {
+	db, diags = NewDatabase(name, block, c)
+	c.Databases[name] = db
 	return
 }

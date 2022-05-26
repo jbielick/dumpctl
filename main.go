@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jessevdk/go-flags"
@@ -21,10 +22,11 @@ type Options struct {
 func main() {
 	var opts Options
 	extraArgs, err := flags.Parse(&opts)
-	opts.ExtraArgs = extraArgs
 	if err != nil {
-		log.Fatalf("failed to parse options: %v\n", err.Error())
+		// PrintError defaults to true
+		os.Exit(1)
 	}
+	opts.ExtraArgs = extraArgs
 	config, err := NewConfig(&opts)
 
 	if err != nil {

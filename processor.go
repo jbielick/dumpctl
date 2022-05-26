@@ -42,7 +42,7 @@ func (p *Processor) DumpDatabase(s chan error, ctx context.Context, database *Da
 		dumper.SetWhere(table.Where)
 		dumper.SetLimit(table.Limit)
 
-		visitor := &RuleVisitor{Table: &table}
+		visitor := &RuleVisitor{Table: table}
 
 		r, w := io.Pipe()
 
@@ -89,7 +89,7 @@ func (p *Processor) Run() error {
 
 	for _, database := range p.Config.Databases {
 		p.Wg.Add(1)
-		go p.DumpDatabase(s, ctx, &database)
+		go p.DumpDatabase(s, ctx, database)
 	}
 
 	go func() {

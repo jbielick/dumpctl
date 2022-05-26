@@ -12,7 +12,6 @@ import (
 )
 
 type RedactRule struct {
-	UnconfiguredRule
 	Columns []string `cty:"columns"`
 }
 
@@ -42,27 +41,29 @@ func (r *RedactRule) Apply(row *Row) error {
 				types.KindRaw, types.KindMysqlJSON:
 				// TODO implement Restore function
 				return errors.New("Not implemented")
+			case types.KindNull:
+				continue
 			default:
-				return errors.New("can't redact")
+				return fmt.Errorf("don't know how to redact column %s with type %T", columnName, expr.Kind())
 			}
 		}
 	}
 	return nil
 }
 
-func NewRedactRule(unconfiguredRule UnconfiguredRule, ctx *hcl.EvalContext) (*RedactRule, hcl.Diagnostics) {
+func NewRedactRule(block *hcl.Block, ctx *hcl.EvalContext) (*RedactRule, hcl.Diagnostics) {
 	rule := &RedactRule{}
-	decodedSpec, diagnostics := hcldec.Decode(unconfiguredRule.SpecBody, redactRuleDefaultSpec, ctx)
+	decodedSpec, diagnostics := hcldec.Decode(block.Body, redactRuleDefaultSpec, ctx)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
 	}
 	err := gocty.FromCtyValue(decodedSpec, &rule)
 	if err != nil {
-		attrRange := unconfiguredRule.SpecBody.MissingItemRange()
+		attrRange := block.Body.MissingItemRange()
 		return nil, hcl.Diagnostics{
 			&hcl.Diagnostic{
 				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("error while configuring %s rule: %v", unconfiguredRule.Type, err.Error()),
+				Summary:  fmt.Sprintf("error while configuring %s rule: %v", "@TODO", err.Error()),
 				Subject:  &attrRange,
 			},
 		}

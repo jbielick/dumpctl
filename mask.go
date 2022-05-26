@@ -12,7 +12,6 @@ import (
 )
 
 type MaskRule struct {
-	UnconfiguredRule
 	Columns       []string `cty:"columns"`
 	Surrogate     string   `cty:"surrogate"`
 	PatternString string   `cty:"pattern"`
@@ -54,19 +53,19 @@ func (r *MaskRule) Apply(row *Row) error {
 	return nil
 }
 
-func NewMaskRule(unconfiguredRule UnconfiguredRule, ctx *hcl.EvalContext) (*MaskRule, hcl.Diagnostics) {
+func NewMaskRule(block *hcl.Block, ctx *hcl.EvalContext) (*MaskRule, hcl.Diagnostics) {
 	rule := &MaskRule{}
-	decodedSpec, diagnostics := hcldec.Decode(unconfiguredRule.SpecBody, maskRuleDefaultSpec, ctx)
+	decodedSpec, diagnostics := hcldec.Decode(block.Body, maskRuleDefaultSpec, ctx)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics
 	}
 	err := gocty.FromCtyValue(decodedSpec, &rule)
 	if err != nil {
-		attrRange := unconfiguredRule.SpecBody.MissingItemRange()
+		attrRange := block.Body.MissingItemRange()
 		return nil, hcl.Diagnostics{
 			&hcl.Diagnostic{
 				Severity: hcl.DiagError,
-				Summary:  fmt.Sprintf("error while configuring %s rule: %v", unconfiguredRule.Type, err.Error()),
+				Summary:  fmt.Sprintf("error while configuring %s rule: %v", "@TODO", err.Error()),
 				Subject:  &attrRange,
 			},
 		}
