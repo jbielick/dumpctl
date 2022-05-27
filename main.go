@@ -19,22 +19,27 @@ type Options struct {
 	ExtraArgs  []string
 }
 
-func main() {
-	var opts Options
+var opts Options
+
+func init() {
+	log.SetFlags(0)
 	extraArgs, err := flags.Parse(&opts)
 	if err != nil {
 		// PrintError defaults to true
 		os.Exit(1)
 	}
 	opts.ExtraArgs = extraArgs
+}
+
+func main() {
 	config, err := NewConfig(&opts)
 
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	processor := NewProcessor(config)
-	err = processor.Run()
+	sequencer, err := NewDumpSequencer(config)
+	err = sequencer.Dump()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
