@@ -11,7 +11,8 @@ import (
 type Options struct {
 	ConfigFile string `short:"c" long:"config" description:"Path to config file" required:"true"`
 	Host       string `short:"h" long:"host" description:"hostname of server" default:"127.0.0.1"`
-	Port       string `short:"P" long:"port" description:"port of server"`
+	Port       string `short:"P" long:"port" description:"port of server" default:"3306"`
+	Socket     string `short:"S" long:"socket"`
 	User       string `short:"u" long:"user" description:"user for login"`
 	Password   string `short:"p" long:"password" description:"password for login"`
 	Binpath    string `long:"binpath" description:"Path to mysqldump" default:"mysqldump"`
@@ -32,6 +33,8 @@ func init() {
 }
 
 func main() {
+	log.Printf("DEBUG: reading config")
+
 	config, err := NewConfig(&opts)
 
 	if err != nil {
@@ -39,6 +42,7 @@ func main() {
 	}
 
 	sequencer, err := NewDumpSequencer(config)
+	log.Printf("DEBUG: starting dump")
 	err = sequencer.Dump()
 	if err != nil {
 		log.Fatal(err.Error())

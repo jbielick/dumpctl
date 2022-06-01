@@ -4,17 +4,19 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/heimdalr/dag"
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Database struct {
-	Name   string
-	Tables map[string]*Table
-	DAG    *dag.DAG
-	Block  *hcl.Block
-	Config *Config
+	Name        string
+	Tables      map[string]*Table
+	DAG         *dag.DAG
+	Block       *hcl.Block
+	Config      *Config
+	Destination string   `hcl:"destination_database,optional"`
+	Remain      hcl.Body `hcl:",remain"`
 }
 
 var databaseSchema = &hcl.BodySchema{
@@ -35,7 +37,19 @@ func NewDatabase(name string, block *hcl.Block, config *Config) (database *Datab
 		Config: config,
 	}
 
-	content, diags := database.Block.Body.Content(databaseSchema)
+	// allows extra content to be parsed later in Body.PartialContent
+	moreDiags := gohcl.DecodeBody(block.Body, nil, database)
+	diags = append(diags, moreDiags...)
+	if moreDiags.HasErrors() {
+		return
+	}
+
+	if len(database.Destination) == 0 {
+		database.Destination = name
+	}
+
+	// partial because some of the attributes may be consumed with DecodeBody
+	content, _, diags := database.Block.Body.PartialContent(databaseSchema)
 	if diags.HasErrors() {
 		return
 	}
@@ -50,12 +64,19 @@ func NewDatabase(name string, block *hcl.Block, config *Config) (database *Datab
 }
 
 func (d *Database) AddTable(name string, block *hcl.Block) (table *Table, diags hcl.Diagnostics) {
+	if _, ok := d.Tables[name]; ok {
+		return nil, diags.Append(&hcl.Diagnostic{
+			Summary:  fmt.Sprintf("cannot add duplicate table '%s'", name),
+			Subject:  &block.LabelRanges[0],
+			Severity: hcl.DiagError,
+		})
+	}
 	table, diags = NewTable(d, name, block)
 	if diags.HasErrors() {
 		return
 	}
 	d.Tables[name] = table
-	d.DAG.AddVertex(table)
+	d.DAG.AddVertexByID(table.Name, table)
 	return
 }
 
@@ -63,53 +84,32 @@ func (d *Database) ReadSchema() (diags hcl.Diagnostics) {
 	for _, table := range d.Tables {
 		moreDiags := table.ReadSchema()
 		if diags = append(diags, moreDiags...); diags.HasErrors() {
-			continue
+			return
 		}
 	}
-	return diags
+	return
 }
 
-func (d *Database) ReadRules() (diags hcl.Diagnostics) {
+func (d *Database) ReadDynamicConfig() (diags hcl.Diagnostics) {
 	for _, table := range d.Tables {
-		moreDiags := table.ReadRules()
+		moreDiags := table.ReadDynamicConfig()
 		if diags = append(diags, moreDiags...); diags.HasErrors() {
 			continue
 		}
 	}
-	return diags
+	return
 }
 
 func (d *Database) ContextVariables() map[string]cty.Value {
 	vars := make(map[string]cty.Value)
 	for _, table := range d.Tables {
-		vars[table.Name] = cty.MapVal(table.ContextVariables())
+		vars[table.Name] = cty.MapVal(table.ContextVariables(true))
 	}
 	return vars
 }
 
 func (d *Database) EvalContext() *hcl.EvalContext {
-	selectFn := function.New(&function.Spec{
-		Params: []function.Parameter{
-			{Name: "column", Type: cty.String},
-			{Name: "table", Type: cty.DynamicPseudoType},
-		},
-		Type: function.StaticReturnType(cty.String),
-		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-
-			return cty.StringVal(
-				fmt.Sprintf(
-					"select %s from %s where %s",
-					args[0].AsString(),
-					args[1].AsValueMap()["__name"].AsString(),
-					"1",
-				),
-			), nil
-		},
-	})
 	return &hcl.EvalContext{
 		Variables: d.ContextVariables(),
-		Functions: map[string]function.Function{
-			"select": selectFn,
-		},
 	}
 }

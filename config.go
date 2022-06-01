@@ -3,7 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
@@ -14,6 +16,8 @@ type Config struct {
 	Databases map[string]*Database
 	Options   *Options
 	File      *hcl.File
+	Started   time.Time
+	Conn      *sql.DB
 }
 
 var configSchema = &hcl.BodySchema{
@@ -45,23 +49,53 @@ type Row struct {
 func NewConfig(opts *Options) (config *Config, err error) {
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCLFile(opts.ConfigFile)
+	conn, err := NewConnection(opts)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
 
 	config = &Config{
 		Databases: make(map[string]*Database),
 		Options:   opts,
 		File:      f,
+		Started:   time.Now(),
+		Conn:      conn,
 	}
 
 	moreDiags := config.Read()
 	diags = append(diags, moreDiags...)
 
+	var sb strings.Builder
+	wr := hcl.NewDiagnosticTextWriter(&sb, parser.Files(), 78, true)
+	wr.WriteDiagnostics(diags)
 	if diags.HasErrors() {
-		var sb strings.Builder
-		wr := hcl.NewDiagnosticTextWriter(&sb, parser.Files(), 78, true)
-		wr.WriteDiagnostics(diags)
-		err = fmt.Errorf("Some errors were encountered reading the config: \n%s", sb.String())
+		err = fmt.Errorf("Could not read config")
 	}
+	log.Println(sb.String())
+
 	return
+}
+
+func NewConnection(opts *Options) (*sql.DB, error) {
+	var dsn string
+	if len(opts.Socket) != 0 {
+		dsn = fmt.Sprintf(
+			"%s:%s@unix(%s)/",
+			opts.User,
+			opts.Password,
+			opts.Socket,
+		)
+	} else {
+		dsn = fmt.Sprintf(
+			"%s:%s@tcp(%s:%s)/",
+			opts.User,
+			opts.Password,
+			opts.Host,
+			opts.Port,
+		)
+	}
+	return sql.Open("mysql", dsn)
 }
 
 func (c *Config) Read() (diags hcl.Diagnostics) {
@@ -70,7 +104,9 @@ func (c *Config) Read() (diags hcl.Diagnostics) {
 		return
 	}
 	for _, dbBlock := range configContent.Blocks {
-		database, moreDiags := c.AddDatabase(dbBlock.Labels[0], dbBlock)
+		name := dbBlock.Labels[0]
+		database, moreDiags := NewDatabase(name, dbBlock, c)
+		c.Databases[name] = database
 		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
 			continue
 		}
@@ -78,17 +114,11 @@ func (c *Config) Read() (diags hcl.Diagnostics) {
 		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
 			continue
 		}
-		moreDiags = database.ReadRules()
+		moreDiags = database.ReadDynamicConfig()
 		if diags = append(diags, moreDiags...); moreDiags.HasErrors() {
 			continue
 		}
 	}
-	return
-}
 
-// make some of this NewDatabase
-func (c *Config) AddDatabase(name string, block *hcl.Block) (db *Database, diags hcl.Diagnostics) {
-	db, diags = NewDatabase(name, block, c)
-	c.Databases[name] = db
 	return
 }

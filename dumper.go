@@ -17,7 +17,6 @@ type Dumper struct {
 	Tables           []string
 	Database         string
 	Where            string
-	Limit            int
 	Charset          string
 	ExtraOptions     []string
 	ErrOut           io.Writer
@@ -32,7 +31,11 @@ func NewDumper(options *Options) (*Dumper, error) {
 
 	d := new(Dumper)
 	d.Binpath = path
-	d.Addr = fmt.Sprintf("%s:%s", options.Host, options.Port)
+	if len(options.Socket) != 0 {
+		d.Addr = options.Socket
+	} else {
+		d.Addr = fmt.Sprintf("%s:%s", options.Host, options.Port)
+	}
 	d.User = options.User
 	d.Password = options.Password
 	d.Tables = make([]string, 0, 16)
@@ -50,10 +53,6 @@ func (d *Dumper) SetCharset(charset string) {
 
 func (d *Dumper) SetWhere(where string) {
 	d.Where = where
-}
-
-func (d *Dumper) SetLimit(limit int) {
-	d.Limit = limit
 }
 
 func (d *Dumper) SetExtraOptions(options []string) {
@@ -119,20 +118,8 @@ func (d *Dumper) Dump(w io.Writer) error {
 		args = append(args, fmt.Sprintf("--default-character-set=%s", d.Charset))
 	}
 
-	var where string
-	var limit string
-
-	if d.Limit != 0 {
-		where = "1"
-		limit = fmt.Sprintf(" limit %d", d.Limit)
-	}
-
 	if len(d.Where) != 0 {
-		where = d.Where
-	}
-
-	if len(where) != 0 || len(limit) != 0 {
-		args = append(args, fmt.Sprintf("--where=%s%s", where, limit))
+		args = append(args, fmt.Sprintf("--where=%s", d.Where))
 	}
 
 	if len(d.ExtraOptions) != 0 {
@@ -142,14 +129,13 @@ func (d *Dumper) Dump(w io.Writer) error {
 	args = append(args, d.Database)
 	args = append(args, d.Tables...)
 
-	// _, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.Database)))
-	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", "promote_test")))
+	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.Database)))
 	if err != nil {
 		return fmt.Errorf(`could not write USE command: %w`, err)
 	}
 
 	args[passwordArgIndex] = "--password=******"
-	log.Printf("exec mysqldump with %v\n", args)
+	log.Printf("<- %s.%s %s\n", d.Database, d.Tables[0], d.Where)
 	args[passwordArgIndex] = passwordArg
 	cmd := exec.Command(d.Binpath, args...)
 
