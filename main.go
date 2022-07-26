@@ -1,110 +1,50 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"strings"
 
-	cli "github.com/adwerx/trimdump/cli"
-	v1 "github.com/adwerx/trimdump/v1"
-	hclsimple "github.com/hashicorp/hcl/v2/hclsimple"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jessevdk/go-flags"
-	"gopkg.in/yaml.v2"
 )
 
-type Processor interface {
-	Run(cli.Options) error
+type Options struct {
+	ConfigFile string `short:"c" long:"config" description:"Path to config file" required:"true"`
+	Host       string `short:"h" long:"host" description:"hostname of server" default:"127.0.0.1"`
+	Port       string `short:"P" long:"port" description:"port of server" default:"3306"`
+	Socket     string `short:"S" long:"socket"`
+	User       string `short:"u" long:"user" description:"user for login"`
+	Password   string `short:"p" long:"password" description:"password for login"`
+	Binpath    string `long:"binpath" description:"Path to mysqldump" default:"mysqldump"`
+	Verbose    []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	ExtraArgs  []string
 }
 
-type Api struct {
-	Version   string `yaml:"apiVersion"`
-	Processor Processor
-}
+var opts Options
 
-var versionReader struct {
-	Version string `yaml:"apiVersion" hcl:"version"`
-}
-
-func (api *Api) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var versionReader struct {
-		Version string `yaml:"apiVersion"`
+func init() {
+	log.SetFlags(0)
+	extraArgs, err := flags.Parse(&opts)
+	if err != nil {
+		// PrintError defaults to true
+		os.Exit(1)
 	}
-	if err := unmarshal(&versionReader); err != nil {
-		return err
-	}
-	if len(versionReader.Version) > 0 {
-		api.Version = versionReader.Version
-	} else {
-		api.Version = "v1"
-	}
-	versionMap := map[string]Processor{
-		"v1": v1.NewProcessor(),
-	}
-	processor := versionMap[api.Version]
-	if err := unmarshal(processor); err != nil {
-		return err
-	}
-	api.Processor = processor
-	return nil
+	opts.ExtraArgs = extraArgs
 }
 
 func main() {
-	var opts cli.Options
-	extraArgs, err := flags.Parse(&opts)
-	opts.ExtraArgs = extraArgs
+	log.Printf("DEBUG: reading config")
+
+	config, err := NewConfig(&opts)
+
 	if err != nil {
-		log.Fatalf("failed to parse options: %v\n", err)
+		log.Fatal(err.Error())
 	}
-	var api = new(Api)
-	if len(opts.ConfigFile) > 0 {
-		if strings.HasSuffix(opts.ConfigFile, ".hcl") {
-			err := hclsimple.DecodeFile(opts.ConfigFile, nil, api)
-			if err != nil {
-				log.Fatalf("Failed to load configuration: %s", err)
-			}
-			log.Printf("DEBUG: %+v\n", api)
-			os.Exit(0)
-		} else {
-			data, err := os.ReadFile(opts.ConfigFile)
-			if err != nil {
-				log.Fatalf("Failed to read config: %v\n", err)
-			}
-			if err := yaml.Unmarshal(data, &api); err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
-	err = api.Processor.Run(opts)
+
+	sequencer, err := NewDumpSequencer(config)
+	log.Printf("DEBUG: starting dump")
+	err = sequencer.Dump()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
-
-	fmt.Printf("%v\n", api)
-	os.Exit(0)
-
-	// var in io.Reader
-
-	// info, err := os.Stdin.Stat()
-	// if err != nil {
-	// 	log.Fatalf("ERROR: %v\n", err)
-	// }
-	// if info.Size() > 0 {
-	// 	in = os.Stdin
-	// } else {
-	// 	in, err = NewDumpReader(dumpExtraArgs)
-	// 	if err != nil {
-	// 		log.Fatalf("ERROR: failed to create dump: %v\n", err)
-	// 	}
-	// }
-
-	// scanner := bufio.NewScanner(in)
-
-	// for scanner.Scan() {
-	// 	fmt.Println(scanner.Text())
-	// }
-
-	// if err := scanner.Err(); err != nil {
-	// 	log.Fatal(err)
-	// }
 }
