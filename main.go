@@ -41,7 +41,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	sequencer, err := NewDumpSequencer(config)
+	sequencer := NewDumpSequencer(config)
 	log.Printf("DEBUG: starting dump")
 	err = sequencer.Dump()
 	if err != nil {

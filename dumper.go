@@ -16,6 +16,7 @@ type Dumper struct {
 	Password         string
 	Tables           []string
 	Database         string
+	Destination      string
 	Where            string
 	Charset          string
 	ExtraOptions     []string
@@ -67,6 +68,10 @@ func (d *Dumper) SetMaxAllowedPacket(i int) {
 	d.maxAllowedPacket = i
 }
 
+func (d *Dumper) SetDestinationDatabase(name string) {
+	d.Destination = name
+}
+
 func (d *Dumper) AddTables(db string, tables ...string) {
 	if d.Database != db {
 		d.Database = db
@@ -79,7 +84,16 @@ func (d *Dumper) AddTables(db string, tables ...string) {
 func (d *Dumper) Reset() {
 	d.Tables = d.Tables[0:0]
 	d.Database = ""
+	d.Destination = ""
 	d.Where = ""
+}
+
+func (d *Dumper) DestinationDatabase() string {
+	if len(d.Destination) > 0 {
+		return d.Destination
+	} else {
+		return d.Database
+	}
 }
 
 func (d *Dumper) Dump(w io.Writer) error {
@@ -129,7 +143,7 @@ func (d *Dumper) Dump(w io.Writer) error {
 	args = append(args, d.Database)
 	args = append(args, d.Tables...)
 
-	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.Database)))
+	_, err := w.Write([]byte(fmt.Sprintf("USE `%s`;\n", d.DestinationDatabase())))
 	if err != nil {
 		return fmt.Errorf(`could not write USE command: %w`, err)
 	}

@@ -79,6 +79,7 @@ func (r *Rewriter) Visit(wrapper dag.Vertexer) {
 	r.Dumper.AddTables(r.Database.Name, table.Name)
 	r.Dumper.SetExtraOptions(r.Database.Config.Options.ExtraArgs)
 	r.Dumper.SetWhere(table.Where())
+	r.Dumper.SetDestinationDatabase(r.Database.Destination)
 
 	visitor := &RuleVisitor{Table: table}
 

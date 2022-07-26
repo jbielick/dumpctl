@@ -16,12 +16,10 @@ import (
 
 type DumpSequencer struct {
 	Config *Config
-	Dumper *Dumper
 }
 
-func NewDumpSequencer(config *Config) (*DumpSequencer, error) {
-	dumper, err := NewDumper(config.Options)
-	return &DumpSequencer{Config: config, Dumper: dumper}, err
+func NewDumpSequencer(config *Config) *DumpSequencer {
+	return &DumpSequencer{Config: config}
 }
 
 func (s *DumpSequencer) Dump() error {
@@ -63,5 +61,5 @@ func (s *DumpSequencer) DumpDatabase(database *Database) error {
 		err = fmt.Errorf("Could not read config")
 	}
 	log.Println(sb.String())
-	return nil
+	return err
 }
