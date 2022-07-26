@@ -10,3 +10,9 @@ database "myapp_production" {
   }
 }
 ```
+
+
+Roadmap:
+
+- enhance sampling with CTE and window function where supported (mysql >=8)
+- support more dialects
