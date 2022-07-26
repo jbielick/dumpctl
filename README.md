@@ -15,13 +15,13 @@ Before:
 
 ```sql
 USE `myapp_production`
-INSERT INTO `users` (`name`,`phone`,`email`,`setup_complete`,`pin`)
+INSERT INTO `users` (`name`,`pin`)
 VALUES
-  ("Ryder Mckenzie","(741) 321-8821","a.ultricies.adipiscing@yahoo.edu",1,7400),
-  ("Dennis Salas","1-837-288-1215","nulla.eu.neque@protonmail.com",0,1189),
-  ("Brenda Padilla","(888) 464-1200","purus@google.org",1,3672),
-  ("Yetta Bryant","(863) 568-6868","mauris.magna.duis@aol.couk",1,4470),
-  ("Demetria Benton","(185) 627-3418","cursus.integer.mollis@hotmail.com",1,2819);
+  ("Ryder Mckenzie",7400),
+  ("Dennis Salas",1189),
+  ("Brenda Padilla",3672),
+  ("Yetta Bryant",4470),
+  ("Demetria Benton",2819);
 ```
 
 
@@ -43,10 +43,10 @@ database "myapp_production" {
 After:
 
 ```sql
-INSERT INTO `users` VALUES (1,'Ryder Mckenzie','(741) 321-8821','a.ultricies.adipiscing@yahoo.edu',1,'****');
-INSERT INTO `users` VALUES (3,'Brenda Padilla','(888) 464-1200','purus@google.org',1,'****');
-INSERT INTO `users` VALUES (4,'Yetta Bryant','(863) 568-6868','mauris.magna.duis@aol.couk',1,'****');
-INSERT INTO `users` VALUES (5,'Demetria Benton','(185) 627-3418','cursus.integer.mollis@hotmail.com',1,'****');
+INSERT INTO `users` VALUES (1,'Ryder Mckenzie','****');
+INSERT INTO `users` VALUES (3,'Brenda Padilla','****');
+INSERT INTO `users` VALUES (4,'Yetta Bryant','****');
+INSERT INTO `users` VALUES (5,'Demetria Benton','****');
 ```
 
 ## Configuration
