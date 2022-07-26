@@ -14,21 +14,18 @@ The resulting output is equivalent to the mysqldump output of insert statements.
 Before:
 
 ```sql
-USE `myapp_production`
-INSERT INTO `users` (`name`,`pin`)
-VALUES
-  ("Ryder Mckenzie",7400),
-  ("Dennis Salas",1189),
-  ("Brenda Padilla",3672),
-  ("Yetta Bryant",4470),
-  ("Demetria Benton",2819);
+INSERT INTO `users` VALUES ("Ryder Mckenzie",  7400);
+INSERT INTO `users` VALUES ("Dennis Salas",    1189);
+INSERT INTO `users` VALUES ("Toby Flenderson", null);
+INSERT INTO `users` VALUES ("Brenda Padilla",  3672);
+INSERT INTO `users` VALUES ("Yetta Bryant",    4470);
+INSERT INTO `users` VALUES ("Demetria Benton", 2819);
 ```
 
 
 ```hcl
 // config.hcl
 database "myapp_production" {
-  destination_database = "myapp_test"
   table "users" {
     where = "pin is not null"
     rule "mask" {
@@ -43,10 +40,10 @@ database "myapp_production" {
 After:
 
 ```sql
-INSERT INTO `users` VALUES (1,'Ryder Mckenzie','****');
-INSERT INTO `users` VALUES (3,'Brenda Padilla','****');
-INSERT INTO `users` VALUES (4,'Yetta Bryant','****');
-INSERT INTO `users` VALUES (5,'Demetria Benton','****');
+INSERT INTO `users` VALUES (1,  'Ryder Mckenzie',   '****');
+INSERT INTO `users` VALUES (3,  'Brenda Padilla',   '****');
+INSERT INTO `users` VALUES (4,  'Yetta Bryant',     '****');
+INSERT INTO `users` VALUES (5,  'Demetria Benton',  '****');
 ```
 
 ## Configuration
