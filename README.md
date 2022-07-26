@@ -17,7 +17,6 @@ Before:
 INSERT INTO `users` VALUES ("Ryder Mckenzie",  7400);
 INSERT INTO `users` VALUES ("Dennis Salas",    1189);
 INSERT INTO `users` VALUES ("Toby Flenderson", null);
-INSERT INTO `users` VALUES ("Brenda Padilla",  3672);
 INSERT INTO `users` VALUES ("Yetta Bryant",    4470);
 INSERT INTO `users` VALUES ("Demetria Benton", 2819);
 ```
