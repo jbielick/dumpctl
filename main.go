@@ -16,6 +16,7 @@ type Options struct {
 	User       string `short:"u" long:"user" description:"user for login"`
 	Password   string `short:"p" long:"password" description:"password for login"`
 	Binpath    string `long:"binpath" description:"Path to mysqldump" default:"mysqldump"`
+	Help       bool   `long:"help" description:"Display this (help) message"`
 	Verbose    []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
 	ExtraArgs  []string
 }
@@ -24,15 +25,24 @@ var opts Options
 
 func init() {
 	log.SetFlags(0)
-	extraArgs, err := flags.Parse(&opts)
-	if err != nil {
-		// PrintError defaults to true
-		os.Exit(1)
-	}
-	opts.ExtraArgs = extraArgs
 }
 
 func main() {
+	parser := flags.NewParser(&opts, flags.PassDoubleDash)
+	extraArgs, err := parser.Parse()
+
+	if opts.Help {
+		parser.WriteHelp(os.Stderr)
+		os.Exit(0)
+	}
+
+	if err != nil {
+		log.Printf("Error: %s\n\n", err.Error())
+		parser.WriteHelp(os.Stderr)
+		os.Exit(1)
+	}
+	opts.ExtraArgs = extraArgs
+
 	log.Printf("DEBUG: reading config")
 
 	config, err := NewConfig(&opts)
