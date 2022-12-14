@@ -1,9 +1,17 @@
-version: '3.8'
+version: "3.8"
 volumes:
   mysql-data:
 services:
+  app:
+    build:
+      context: .
+      target: dev
+    depends_on:
+      - mysql
+    volumes:
+      - .:/go/src/github.com/jbielick/dumpctl
   mysql:
-    image: mysql:5.7.33
+    image: mysql:5.7.36
     platform: linux/amd64
     environment:
       MYSQL_ROOT_PASSWORD: root

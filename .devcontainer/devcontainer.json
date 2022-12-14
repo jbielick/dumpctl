@@ -1,0 +1,16 @@
+{
+  "name": "dumpctl",
+  "dockerComposeFile": "../docker-compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/go/src/github.com/jbielick/dumpctl",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go"
+      ]
+    }
+  },
+  // "runServices": [],
+  // "shutdownAction": "none",
+  "postCreateCommand": "go install -v golang.org/x/tools/gopls@latest"
+}
