@@ -141,7 +141,7 @@ func (t *Table) CustomBodySchema() (schema *hcl.BodySchema) {
 	schema = &hcl.BodySchema{
 		Attributes: []hcl.AttributeSchema{},
 	}
-	for colName, _ := range t.Columns {
+	for colName := range t.Columns {
 		schema.Attributes = append(schema.Attributes, hcl.AttributeSchema{
 			Name:     colName,
 			Required: false,
