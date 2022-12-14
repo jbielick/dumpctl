@@ -106,7 +106,7 @@ func (t *Table) AddRule(ruleType string, block *hcl.Block) (rule Rule, diags hcl
 }
 
 func (t *Table) ReadSchema() (diags hcl.Diagnostics) {
-	log.Printf("DEBUG: reading schema for %+v\n", t.Name)
+	log.Printf("DEBUG: reading schema for %s.%s\n", t.Database.Name, t.Name)
 	rows, err := t.Database.Config.Conn.Query(`
 SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION, CHARACTER_MAXIMUM_LENGTH
 from INFORMATION_SCHEMA.COLUMNS
