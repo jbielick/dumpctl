@@ -95,7 +95,6 @@ func (r *Rewriter) Visit(wrapper dag.Vertexer) {
 		line := scanner.Text()
 
 		if len(line) > 5 && line[0:6] == "INSERT" {
-			os.Stderr.WriteString(".")
 			stmtNode, err := r.Parser.ParseOneStmt(line, "", "")
 			if err != nil {
 				log.Fatal(err.Error())
