@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/tidb/parser/ast"
 )
 
 type Config struct {

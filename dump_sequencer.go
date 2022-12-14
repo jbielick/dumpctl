@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/heimdalr/dag"
-	"github.com/pingcap/parser"
+	"github.com/pingcap/tidb/parser"
 	_ "github.com/pingcap/tidb/types/parser_driver"
 )
 

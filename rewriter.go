@@ -10,9 +10,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/heimdalr/dag"
-	"github.com/pingcap/parser"
-	"github.com/pingcap/parser/ast"
-	"github.com/pingcap/parser/format"
+	"github.com/pingcap/tidb/parser"
+	"github.com/pingcap/tidb/parser/ast"
+	"github.com/pingcap/tidb/parser/format"
 )
 
 type RuleVisitor struct {
